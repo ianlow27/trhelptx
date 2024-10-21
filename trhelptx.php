@@ -1,7 +1,7 @@
 <?php
 //-------------------------------------------------
 $usage = 
-"github.com/ianlow27/trhelptx (v0.0.1 241018-1218)".
+"github.com/ianlow27/trhelptx (v0.0.2 241021-0750)".
 " - CLI usage: trhelptx.php -f{text-file} -v{vocab-file}";
 //-------------------------------------------------
 file_put_contents("dbg.txt", date("Y:m:d H:i:s")); //<=ENABLE DEBUG
@@ -62,6 +62,7 @@ $htmlhdr=
 .speng {color:black; font-weight:bold;text-decoration:underline;}
 .splng {color:blue; font-weight:bold;}
 .sptyp {color:blue; font-weight:normal;}
+body  {margin:0px; padding:0px; } 
 </style>
 </head><body><b>'.$usage.'</b><br/>';
 $htmlftr= '</body></html>';
@@ -72,21 +73,25 @@ if(isset($_SERVER["SERVER_PORT"])){
     echo $htmlhdr;
     if(dbg) echo "<li>6";
     echo "
-    <textarea id='txt1' style='width:45%;height:200px;'>".
+    <textarea id='txt1' style='font-size:80%;width:65%;height:200px;'>".
     file_get_contents($txtfile. "_out.txt")
     ."</textarea>
-    <textarea id='txt2' style='width:45%;height:200px;'>".
+    <textarea id='txt2' style='font-size:80%;width:28%;height:200px;'>".
     file_get_contents($vcbfile. "_new.txt")
     ."</textarea><br/>
-    <button onclick='proctxt();'>Submit</button>
-    <div id='resp1'></div>
+    <button onclick='proctxt();' style='margin-bottom:20px;'>Submit</button>
+    <div id='resp1' style='font-size:120%;margin:40px;'></div>
     <script>const txt1=document.getElementById('txt1'); txt1.focus();
     function proctxt(){
       //alert(txt1.value);
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function() {
          if (this.readyState == 4 && this.status == 200) {
-           document.getElementById('resp1').innerHTML = this.responseText;
+           const aresp = this.responseText.split(/%%%___%%%/); 
+           //document.getElementById('resp1').innerHTML = this.responseText; 
+           document.getElementById('resp1').innerHTML = aresp[0];
+           document.getElementById('txt1').value = aresp[1];
+           document.getElementById('txt2').value = aresp[2];
            //alert(this.responseText);
           }
         };
@@ -104,8 +109,8 @@ if(isset($_SERVER["SERVER_PORT"])){
 if(dbg) echo "<li>8";
 $vocab = explode("\n", 
   file_get_contents($vcbfile). "\n". 
-  file_get_contents($vcbfile. "_new.txt")
-);
+  preg_replace("/\//", "\t", file_get_contents($vcbfile. "_new.txt")) 
+) ;
 //----------------------------
 //----------------------------
 if(dbg) echo "<li>9";
@@ -115,7 +120,7 @@ $lines = explode("\n",
      file_get_contents($txtfile."_out.txt")
      :                                //<=IF CALLED FROM CLI
      file_get_contents($txtfile) )
-  );
+  . "\n\n");
 foreach($lines as $line){
   $count++;
   //if($count > 10) break;
@@ -126,7 +131,7 @@ foreach($lines as $line){
         $listwords = trim(getEntries(substr($word,0,-1)));
         if ($listwords == ""){
 if(dbg) echo "<li>8a_". $word;
-          $newwords.="?\t?\t". substr($word,0,-1). "\n";
+          $newwords.="?/?/". substr($word,0,-1). "\n"; 
           $paragraph.=" ". $word; 
           $htmlpara .=" ". $word;
         }else if(substr($listwords,0,5) == "^?[?]"){
@@ -179,7 +184,10 @@ if(dbg) echo "<li>a";
 file_put_contents($txtfile."_out.txt", trim($outputstr));
 file_put_contents($txtfile."_out.html", $htmlhdr .$htmlstr. $htmlftr);
 file_put_contents($vcbfile."_new.txt", $newwords, FILE_APPEND | LOCK_EX );
-if(isset($_SERVER["SERVER_PORT"])) echo $htmlstr. $htmlftr;
+if(isset($_SERVER["SERVER_PORT"])) 
+  echo $htmlstr. $htmlftr.
+        "%%%___%%%". $outputstr.
+        "%%%___%%%". file_get_contents($vcbfile."_new.txt");
 //-------------------------------------------------
 function getEntries($engword){
 global $vocab;
@@ -200,11 +208,12 @@ $retval="";
 }//endfunc
 //-------------------------------------------------
 function sortUniqStr($str, $sep){
+  $str = preg_replace("/\-\^/", "^", $str);
   $retval="";
   $sortarr = explode($sep, $str);
   sort($sortarr);
   foreach(array_unique($sortarr) as $entry){
-    if($retval != "") $retval .= $sep;
+    if($retval != "") $retval .= "-".$sep; 
     $retval.=$entry;
   }//endforeach
   return $retval;
