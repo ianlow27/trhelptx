@@ -28,6 +28,10 @@ if(!isset($_SERVER["SERVER_PORT"])){ //<=CALLED FROM CLI
     echo $usage; return;
   }//endif
 }else { //<=CALLED FROM WEB SERVER OR VIA AJAX
+  if((isset($_POST["txtall"]))){ 
+    $txtfile = __TEXTFILE__;
+    file_put_contents($txtfile. "_all.txt", $_POST["txtall"]);
+  } 
   if((isset($_POST["vcbtxt"]))){  //<=IF NEW VOCAB DATA SENT VIA AJAX
     $vcbfile = __VOCABFILE__;
     file_put_contents($vcbfile. "_new.txt", $_POST["vcbtxt"]);
@@ -73,16 +77,19 @@ if(isset($_SERVER["SERVER_PORT"])){
     echo $htmlhdr;
     if(dbg) echo "<li>6";
     echo "
-    <textarea id='txt1' style='font-size:80%;width:65%;height:200px;'>".
-    file_get_contents($txtfile. "_out.txt")
+    <table style='width:95%;'>
+    <tr><td valign='top' style='width:80%;'>
+    <textarea id='txtall' style='font-size:80%;width:98%;height:70px;'>". 
+    (file_exists($txtfile."_all.txt") ? file_get_contents($txtfile. "_all.txt") : "" )
     ."</textarea>
-    <textarea id='txt2' style='font-size:80%;width:28%;height:200px;'>".
-    file_get_contents($vcbfile. "_new.txt")
-    ."</textarea><br/>
-    <button onclick='proctxt();' style='margin-bottom:20px;'>Submit</button>
-    <div id='resp1' style='font-size:120%;margin:40px;'></div>
-    <script>const txt1=document.getElementById('txt1'); txt1.focus();
+    
+    </td>
+    <td valign='top' style='width:15%;'>
+    <script>
     function proctxt(){
+      const txt1=document.getElementById('txt1'); 
+      const txt2=document.getElementById('txt2');
+      const txtall=document.getElementById('txtall');
       //alert(txt1.value);
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function() {
@@ -92,14 +99,38 @@ if(isset($_SERVER["SERVER_PORT"])){
            document.getElementById('resp1').innerHTML = aresp[0];
            document.getElementById('txt1').value = aresp[1];
            document.getElementById('txt2').value = aresp[2];
+           document.getElementById('txtall').value = aresp[3];
            //alert(this.responseText);
           }
         };
       xhttp.open('POST', 'trhelptx.php', true);
       xhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      var params = 'ajxtxt='+txt1.value+'&vcbtxt='+txt2.value + '&ajxtyp=AJAX'; 
+      const params = 'ajxtxt='+txt1.value +
+                     '&vcbtxt='+txt2.value + 
+                     '&ajxtyp=AJAX' +
+                     '&txtall='+txtall.value;  
       xhttp.send(params);
     }
+    </script>
+
+    <a href='./README.md'>Help</a><br/>
+
+    <button onclick='proctxt();' style='width:98%;margin-top:20px;margin-bottom:20px;'>Submit</button>
+    
+    </td></tr></table>
+    ".
+    "
+
+    <textarea id='txt1' style='font-size:80%;width:65%;height:200px;'>".
+    file_get_contents($txtfile. "_out.txt")
+    ."</textarea>
+    <textarea id='txt2' style='font-size:80%;width:28%;height:200px;'>".
+    file_get_contents($vcbfile. "_new.txt")
+
+    ."</textarea><br/>
+    <div id='resp1' style='font-size:120%;margin:40px;'></div>
+    <script>
+      document.getElementById('txt1').focus(); 
     </script>
     ".$htmlftr;
     exit;
@@ -109,7 +140,9 @@ if(isset($_SERVER["SERVER_PORT"])){
 if(dbg) echo "<li>8";
 $vocab = explode("\n", 
   file_get_contents($vcbfile). "\n". 
-  preg_replace("/\//", "\t", file_get_contents($vcbfile. "_new.txt")) 
+  preg_replace("/^\*/m", "",
+    preg_replace("/\//", "\t", file_get_contents($vcbfile. "_new.txt")) 
+  )
 ) ;
 //----------------------------
 //----------------------------
@@ -124,14 +157,17 @@ $lines = explode("\n",
 foreach($lines as $line){
   $count++;
   //if($count > 10) break;
-  $line = preg_replace("/([\w\/]{1,1})([\,\.;:]{1,1})/", "$1 $2", $line);
+  $line = 
+    preg_replace("/([\'\"\(\)\[\]]{1,1})([a-zA-Z0-9\-]+[\/]{1,1})/", "$1 $2",  
+      preg_replace("/([\/]{1,1})([\,\.;:\=\-\(\)'\"\[\]\/\\!\?\w\d]{1,1})/", "$1 $2", $line)
+    );
   $words = explode(" ", $line);
   foreach($words as $word){
     if(substr($word, -1)=='/'){
         $listwords = trim(getEntries(substr($word,0,-1)));
         if ($listwords == ""){
 if(dbg) echo "<li>8a_". $word;
-          $newwords.="?/?/". substr($word,0,-1). "\n"; 
+          $newwords.="*?/?/". substr($word,0,-1). "\n"; 
           $paragraph.=" ". $word; 
           $htmlpara .=" ". $word;
         }else if(substr($listwords,0,5) == "^?[?]"){
@@ -146,9 +182,9 @@ if(dbg) echo "<li>8a_". $word;
     }else {
       if(dbg) echo "<li>8d_". $word;
       $paragraph.=" ". $word;
-      if(preg_match("/[\/\^]/", $word)){ 
-        $word = preg_replace("/([\/\]]{1,1})/", "$1%%%", $word);
-        $word = preg_replace("/([\^\[]{1,1})/", "%%%$1", $word);
+      if(preg_match("/[\/\^]/", $word)){ //If word contains earlier found wordlist:
+        $word = preg_replace("/([\/\]]{1,1})/", "$1%%%", $word); //:format wordlist
+        $word = preg_replace("/([\^\[]{1,1})/", "%%%$1", $word); //:format wordlist
         $tmpword = explode("%%%", $word);
         //print_r($tmpword); 
         $newword="";
@@ -187,7 +223,9 @@ file_put_contents($vcbfile."_new.txt", $newwords, FILE_APPEND | LOCK_EX );
 if(isset($_SERVER["SERVER_PORT"])) 
   echo $htmlstr. $htmlftr.
         "%%%___%%%". $outputstr.
-        "%%%___%%%". file_get_contents($vcbfile."_new.txt");
+        "%%%___%%%". file_get_contents($vcbfile."_new.txt").
+        "%%%___%%%". file_get_contents($txtfile."_all.txt")
+        ;
 //-------------------------------------------------
 function getEntries($engword){
 global $vocab;
@@ -195,16 +233,72 @@ $retval="";
   foreach($vocab as $vcbline){
     $vcbitems = explode("\t", trim($vcbline));
     if(isset($vcbitems[2])){
+      $engword = strtolower($engword);
       if($vcbitems[2] == $engword){
-        //if(($vcbitems[0]!="?")&&($vcbitems[1]!="?")){
-          if($retval != "") $retval .= "-";
-          $retval.="^". conv2Accent($vcbitems[0]). "[". $vcbitems[1]. "]";
-        //}
+        if($retval != "") $retval .= "-";
+        $retval.="^". conv2Accent($vcbitems[0]). "[". $vcbitems[1]. "]";
+      }else if($vcbitems[2] == en_adv2adj(  $engword)){
+        if($retval != "") $retval .= "-";
+        $retval.="^". conv2Accent(cy_adj2adv($vcbitems[0])). "[adv]";
+      }else if($vcbitems[2] == "".en_plur2sing($engword)){
+        if($retval != "") $retval .= "-";
+        $retval.="^". conv2Accent(cy_sing2plur($vcbitems[0])). "[". $vcbitems[1]. "s]";
       }
     }
   }//endforeach
   if($retval=="") return "";
+  //echo $retval."[1]__\n";
   return "^".sortUniqStr($retval, "^");
+}//endfunc
+//-------------------------------------------------
+function cy_sing2plur($str){
+  return $str;
+}//endfunc
+//-------------------------------------------------
+function cy_adj2adv($str){
+  $str=cy_mut($str,"soft");
+  return "yn_".$str;
+}//endfunc
+//-------------------------------------------------
+function cy_mut($str, $mut){
+  $char1 = substr($str,0,1);
+  $char2 = substr($str,0,2);
+  //echo $char1."__".$char2."\n";
+  if($mut == "soft"){
+    if(($char1=="b")||($char1=="m")){
+      $str = "f". substr($str,1);
+    }else if($char1=="c"){
+      $str = "g". substr($str,1);
+    }else if($char1=="d"){
+      $str = "dd". substr($str,1);
+    }else if($char1=="g"){
+      $str = "". substr($str,1);
+    }else if($char1=="p"){
+      $str = "b". substr($str,1);
+    }else if($char1=="t"){
+      $str = "d". substr($str,1);
+    }else if($char2=="ll"){
+      $str = "l". substr($str,2);
+    }else if($char2=="rh"){
+      $str = "r". substr($str,2);
+    }
+  }
+  return $str;
+}//endfunc
+//-------------------------------------------------
+function en_adv2adj($str){
+  $retstr= preg_replace("/ly$/", "", $str);
+  return $retstr;
+}//endfunc
+//-------------------------------------------------
+function en_plur2sing($str){
+  $retstr=$str;
+  if      (preg_match("/ies$/", $str)){
+    $retstr = preg_replace("/ies$/", "y", $str);
+  }else if(preg_match("/s$/", $str)){
+    $retstr = preg_replace("/s$/", "", $str);
+  }
+  return $retstr;
 }//endfunc
 //-------------------------------------------------
 function sortUniqStr($str, $sep){

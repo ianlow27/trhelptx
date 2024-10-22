@@ -1,0 +1,28 @@
+    <script>
+    const txt1=document.getElementById('txt1'); 
+    const txt2=document.getElementById('txt2');
+    const txtall=document.getElementById('txtall');
+    txt1.focus();
+    function proctxt(){
+      //alert(txt1.value);
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+         if (this.readyState == 4 && this.status == 200) {
+           const aresp = this.responseText.split(/%%%___%%%/); 
+           //document.getElementById('resp1').innerHTML = this.responseText; 
+           document.getElementById('resp1').innerHTML = aresp[0];
+           document.getElementById('txt1').value = aresp[1];
+           document.getElementById('txt2').value = aresp[2];
+           document.getElementById('txtall').value = aresp[3];
+           //alert(this.responseText);
+          }
+        };
+      xhttp.open('POST', 'trhelptx.php', true);
+      xhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      const params = 'ajxtxt='+txt1.value +
+                     '&vcbtxt='+txt2.value + 
+                     '&ajxtyp=AJAX' +
+                     '&txtall='+txtall.value;  //!!
+      xhttp.send(params);
+    }
+    </script>
