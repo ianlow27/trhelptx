@@ -1,16 +1,16 @@
 # Changelog
 
 ## TO DO LIST
+- : select word(s) from list using backtick (`)
 - : ~
 - : show text details on page e.g. no. of paragraphs, words, etc.
 - : write to browser local storage instead of server file
 - : add button to add the additional vocab to the main vocab
 
-## v0.1.0-2410?? - ??
-- : multiple double blank lines to be single blank lines
-- : search all words update all words fix dictionary - new minor 0.1.0
-- : select word(s) from list using backtick (`)
-- : spaces before and after opening and closing single and double quotes
+## v0.1.0-241026 - search on all words for Welsh words
+- a: multiple double blank lines to be single blank lines
+- b: search all words update all words fix dictionary - new minor 0.1.0
+- c: spaces before and after opening and closing single and double quotes
 
 ## v0.0.3-241022 - additional txtall textarea & search improvements
 - a: enable additional vocab entries to start with asterisk for easier reading
