@@ -4,18 +4,20 @@ $usage =
 "github.com/ianlow27/trhelptx (v0.0.2 241021-0750)".
 " - CLI usage: trhelptx.php -f{text-file} -v{vocab-file}";
 //-------------------------------------------------
+define("__SKIPWORDS__", "|this|is|are|were|will|be|soon|a|the|these|those|I|of|in|front|behind|instead|was|in|that|needed|"); 
+
 file_put_contents("dbg.txt", date("Y:m:d H:i:s")); //<=ENABLE DEBUG
 if(file_exists("dbg.txt")){ unlink("dbg.txt"); }   //<=DISABLE DEBUG
 //-------------------------------------------------
-if(file_exists("dbg.txt")){ define("dbg", True ); 
-}else{                      define("dbg", False); }
+if(file_exists("dbg.txt")){ define("dbg", true ); 
+}else{                      define("dbg", false); }
 define("__VOCABFILE__","vocab_CY_2410.txt");       //<=DEFAULT VOCAB FILE
 define("__TEXTFILE__","ajxtxt.txt");               //<=DEFAULT INPUT FILE
 $txtfile = "";
 $vcbfile = "";
 if(!isset($_SERVER["SERVER_PORT"])){ //<=CALLED FROM CLI
   if(($txtfile=='')||($vcbfile=='')){
-    if(dbg) echo "<li>3";
+    dbge(1);
     for($i=1;$i<3;$i++){
       if      (substr($argv[$i],0,2)=='-f'){
         $txtfile = substr($argv[$i],2);
@@ -24,7 +26,7 @@ if(!isset($_SERVER["SERVER_PORT"])){ //<=CALLED FROM CLI
       }
     }//endfor
   }else {
-    if(dbg) echo "<li>7";
+    dbge(2);
     echo $usage; return;
   }//endif
 }else { //<=CALLED FROM WEB SERVER OR VIA AJAX
@@ -38,12 +40,12 @@ if(!isset($_SERVER["SERVER_PORT"])){ //<=CALLED FROM CLI
   } 
   if((isset($_POST["ajxtxt"]))){ //<=IF NEW TEXT DATA SENT VIA AJAX
     $txtfile = __TEXTFILE__;
-if(dbg) echo "<li>7A___________".$txtfile."_out.txt___". substr($_POST["ajxtxt"],0,200);
+    dbge("7A", $txtfile."_out.txt___". substr($_POST["ajxtxt"],0,200));
     file_put_contents($txtfile. "_out.txt", $_POST["ajxtxt"]);
   }//endif
   if(($txtfile=='')||($vcbfile=='')){
     if((isset($_GET["f"]))&&(isset($_GET["v"]))){
-      if(dbg) echo "<li>1";
+      dbge(5);
       $txtfile = $_GET['f'];
       $vcbfile = $_GET['v'];
       echo $txtfile."______". $vcbfile;
@@ -71,11 +73,11 @@ body  {margin:0px; padding:0px; }
 </head><body><b>'.$usage.'</b><br/>';
 $htmlftr= '</body></html>';
 //----------------
-if(dbg) echo "<li>5";
+dbge(5);
 if(isset($_SERVER["SERVER_PORT"])){
   if(!isset($_POST["ajxtyp"])){ //<=CALLED FROM MAIN WEBPAGE NOT AJAX
     echo $htmlhdr;
-    if(dbg) echo "<li>6";
+    dbge(6);
     echo "
     <table style='width:95%;'>
     <tr><td valign='top' style='width:80%;'>
@@ -137,7 +139,7 @@ if(isset($_SERVER["SERVER_PORT"])){
   }//endif
 }//endif
 //----------------------------
-if(dbg) echo "<li>8";
+dbge(8);
 $vocab = explode("\n", 
   file_get_contents($vcbfile). "\n". 
   preg_replace("/^\*/m", "",
@@ -146,7 +148,7 @@ $vocab = explode("\n",
 ) ;
 //----------------------------
 //----------------------------
-if(dbg) echo "<li>9";
+dbge(9);
 $lines = explode("\n", 
   ( (isset($_SERVER["SERVER_PORT"]))  
      ?                                //<=IF CALLED FROM SERVER
@@ -158,17 +160,30 @@ foreach($lines as $line){
   $count++;
   //if($count > 10) break;
   $line = 
-    preg_replace("/([\'\"\(\)\[\]]{1,1})([a-zA-Z0-9\-]+[\/]{1,1})/", "$1 $2",  
-      preg_replace("/([\/]{1,1})([\,\.;:\=\-\(\)'\"\[\]\/\\!\?\w\d]{1,1})/", "$1 $2", $line)
-    );
+    preg_replace("/([—\‘\“\'\"\(\)]{1,1})([a-zA-Z0-9\-]+)([\/]{0,1})/", "$1 $2$3",  
+      //preg_replace("/(\w\/)([—\’\”\,\.;:\=\-\(\)'\"\/\\!\?\w\d]{1,1})/", "$1 $2", 
+        preg_replace("/(\w)([—\’\”\,\.;:\=\-\(\)'\"\/\\!\?]{1,1})/", "$1 $2", 
+        $line
+        )
+      //)
+    ); 
+  
+  file_put_contents("dbg.txt", $line. "\n\n", FILE_APPEND);
+
   $words = explode(" ", $line);
   foreach($words as $word){
-    if(substr($word, -1)=='/'){
+
+    if(!skipword($word)){
+      $word .= "/";
+      //dbge(178, $word . "__" . skipword($word));
+    }  
+
+    if(substr($word,-1)=="/"){
         $listwords = trim(getEntries(substr($word,0,-1)));
         if ($listwords == ""){
-if(dbg) echo "<li>8a_". $word;
+          dbge( "8a",  $word);
           $newwords.="*?/?/". substr($word,0,-1). "\n"; 
-          $paragraph.=" ". $word; 
+          $paragraph.=" ". $word;
           $htmlpara .=" ". $word;
         }else if(substr($listwords,0,5) == "^?[?]"){
           if(dbg) echo "<li>8b_". $word;
@@ -176,32 +191,38 @@ if(dbg) echo "<li>8a_". $word;
           $htmlpara .=" <span class='speng'>". $word. "</span>";
         }else {
           if(dbg) echo "<li>8c_". $word;
-          $paragraph.=" ". $word. $listwords;
-          $htmlpara .=" ". "<span class='speng'>".$word. "</span><span class='splng'>".$listwords."</span>";
+          $paragraph.=" ". $word. "". $listwords;
+          $htmlpara .=" ". "<span class='speng'>".$word. "". "</span><span class='splng'>".$listwords."</span>";
         }
     }else {
-      if(dbg) echo "<li>8d_". $word;
-      $paragraph.=" ". $word;
-      if(preg_match("/[\/\^]/", $word)){ //If word contains earlier found wordlist:
-        $word = preg_replace("/([\/\]]{1,1})/", "$1%%%", $word); //:format wordlist
-        $word = preg_replace("/([\^\[]{1,1})/", "%%%$1", $word); //:format wordlist
-        $tmpword = explode("%%%", $word);
-        //print_r($tmpword); 
-        $newword="";
-        foreach($tmpword as $tmpwrd){
-          if      (substr($tmpwrd,-1)=="/"){
-            $newword .= "<span class='speng'>".$tmpwrd."</span>";
-          }else if(substr($tmpwrd,0,1)=="^"){
-            $newword .= "<span class='splng'>".$tmpwrd."</span>";
-          }else if(substr($tmpwrd,0,1)=="["){
-            $newword .= "<span class='sptyp'>".$tmpwrd."</span>";
-          }else {
-            $newword .= $tmpwrd;
+      if(dbg) echo "<li>8d_[". $word. "]";
+
+      if(!preg_match("/[\^\[\]]/", $word)){
+        $paragraph.=" ". $word;
+
+        if(preg_match("/[\/\^]/", $word)){ //If word contains earlier found wordlist:
+          $word = preg_replace("/([\/\]]{1,1})/", "$1%%%", $word); //:format wordlist
+          $word = preg_replace("/([\^\[]{1,1})/", "%%%$1", $word); //:format wordlist
+          $tmpword = explode("%%%", $word);
+          //print_r($tmpword); 
+          $newword="";
+          foreach($tmpword as $tmpwrd){
+            if      (substr($tmpwrd,-1)=="/"){
+              $newword .= "<span class='speng'>".$tmpwrd."</span>";
+            }else if(substr($tmpwrd,0,1)=="^"){
+              $newword .= "<span class='splng'>".$tmpwrd."</span>";
+            }else if(substr($tmpwrd,0,1)=="["){
+              $newword .= "<span class='sptyp'>".$tmpwrd."</span>";
+            }else {
+              $newword .= $tmpwrd;
+            }
           }
+          $htmlpara .=" <b>". $newword. "</b>";
         }
-        $htmlpara .=" <b>". $newword. "</b>";
       }else {
-        $htmlpara .=" ". $word;
+        if(!preg_match("/[\^\[\]]/", $word)){
+          $htmlpara .=" ". $word;
+        }
       }
     }
   }//endforeach
@@ -217,6 +238,8 @@ if(dbg) echo "<li>8a_". $word;
 //----------------------------
 //----------------------------
 if(dbg) echo "<li>a";
+
+$outputstr=trim($outputstr);
 file_put_contents($txtfile."_out.txt", trim($outputstr));
 file_put_contents($txtfile."_out.html", $htmlhdr .$htmlstr. $htmlftr);
 file_put_contents($vcbfile."_new.txt", $newwords, FILE_APPEND | LOCK_EX );
@@ -247,8 +270,41 @@ $retval="";
     }
   }//endforeach
   if($retval=="") return "";
-  //echo $retval."[1]__\n";
   return "^".sortUniqStr($retval, "^");
+}//endfunc
+//-------------------------------------------------
+function skipword($pengwd){
+  $engwd = strtolower($pengwd);
+  dbge(271, $engwd);
+
+  if(strlen($engwd) <= 3){
+    dbge(275, $engwd);
+    return true;
+  }else if(preg_match("/^([^a-z]+)/", $engwd)){
+    dbge(278, $engwd);
+    return true;
+  }else if(preg_match("/[\^\[\]]/", $engwd)){
+    dbge(280, $engwd);
+    return true;
+  }else if(!preg_match("/[a-z]/", $pengwd)){
+    dbge(284, $engwd);
+    return true;
+  }else if(preg_match("/^(xxx|".  __SKIPWORDS__ ."|xxx)$/", trim($engwd))){
+    dbge(287, $engwd);
+    return true;
+  }else if(substr($engwd, -1)=="/"){
+    dbge(290, $engwd);
+    return true;
+  }
+  dbge(293, $engwd);
+
+  return false;
+
+}//endfunc
+//-------------------------------------------------
+function dbge($ref, $str=""){
+  //global dbg;
+  if (dbg) echo "<li>".$ref."_____[".$str."]";
 }//endfunc
 //-------------------------------------------------
 function cy_sing2plur($str){
